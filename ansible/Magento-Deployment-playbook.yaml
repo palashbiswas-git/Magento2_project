@@ -1,6 +1,6 @@
 ---
 - name: Magento Deployment
-  hosts: your_server
+  hosts: my_host
   become: yes
   become_user: root
 
@@ -20,12 +20,12 @@
 
     - name: Configure PHP 8.1
       template:
-        src: php.ini.j2
+        src: ansible/Jinja2-templates/php.ini.j2
         dest: /etc/php/8.1/cli/php.ini
 
     - name: Configure MySQL
       template:
-        src: my.cnf.j2
+        src: ansible/Jinja2-templates/my.cnf.j2
         dest: /etc/mysql/my.cnf
       notify: Restart MySQL
 
@@ -55,19 +55,19 @@
 
     - name: Configure NGINX
       template:
-        src: nginx.conf.j2
+        src: ansible/Jinja2-templates/nginx.conf.j2
         dest: /etc/nginx/sites-available/magento
       notify: Reload NGINX
 
     - name: Configure PHP-FPM pool
       template:
-        src: php-fpm-pool.conf.j2
+        src: ansible/Jinja2-templates/php-fpm-pool.conf.j2
         dest: /etc/php/8.1/fpm/pool.d/magento.conf
       notify: Reload PHP-FPM
 
     - name: Configure Magento to use Redis
       template:
-        src: env.php.j2
+        src: ansible/Jinja2-templates/env.php.j2
         dest: /var/www/html/magento2/app/etc/env.php
 
     - name: Generate self-signed SSL certificate
@@ -77,13 +77,13 @@
 
     - name: Configure PHPMyAdmin
       template:
-        src: phpmyadmin.conf.j2
+        src: ansible/Jinja2-templates/phpmyadmin.conf.j2
         dest: /etc/nginx/conf.d/phpmyadmin.conf
       notify: Reload NGINX
 
     - name: Configure Varnish
       template:
-        src: varnish.vcl.j2
+        src: ansible/Jinja2-templates/varnish.vcl.j2
         dest: /etc/varnish/default.vcl
       notify: Restart Varnish
 
