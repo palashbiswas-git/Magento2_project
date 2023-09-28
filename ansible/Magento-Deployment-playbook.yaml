@@ -1,0 +1,109 @@
+---
+- name: Magento Deployment
+  hosts: your_server
+  become: yes
+  become_user: root
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - php8.1
+        - mysql-server-8.0
+        - nginx
+        - elasticsearch
+        - redis-server
+        - phpmyadmin
+        - varnish
+
+    - name: Configure PHP 8.1
+      template:
+        src: php.ini.j2
+        dest: /etc/php/8.1/cli/php.ini
+
+    - name: Configure MySQL
+      template:
+        src: my.cnf.j2
+        dest: /etc/mysql/my.cnf
+      notify: Restart MySQL
+
+    - name: Install Composer
+      shell: curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+
+    - name: Create 'test-ssh' user
+      user:
+        name: test-ssh
+        groups: clp
+        shell: /bin/bash
+
+    - name: Change ownership of files to 'test-ssh' and 'clp'
+      file:
+        path: /var/www/html/magento2
+        owner: test-ssh
+        group: clp
+        recurse: yes
+
+    - name: Install Magento 2 via Composer
+      shell: |
+        sudo -u test-ssh composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition /var/www/html/magento2
+      environment:
+        COMPOSER_HOME: /home/test-ssh/.composer
+      args:
+        creates: /var/www/html/magento2
+
+    - name: Configure NGINX
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/magento
+      notify: Reload NGINX
+
+    - name: Configure PHP-FPM pool
+      template:
+        src: php-fpm-pool.conf.j2
+        dest: /etc/php/8.1/fpm/pool.d/magento.conf
+      notify: Reload PHP-FPM
+
+    - name: Configure Magento to use Redis
+      template:
+        src: env.php.j2
+        dest: /var/www/html/magento2/app/etc/env.php
+
+    - name: Generate self-signed SSL certificate
+      shell: openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/server.key -out /etc/nginx/ssl/server.crt
+      args:
+        creates: /etc/nginx/ssl/server.crt
+
+    - name: Configure PHPMyAdmin
+      template:
+        src: phpmyadmin.conf.j2
+        dest: /etc/nginx/conf.d/phpmyadmin.conf
+      notify: Reload NGINX
+
+    - name: Configure Varnish
+      template:
+        src: varnish.vcl.j2
+        dest: /etc/varnish/default.vcl
+      notify: Restart Varnish
+
+  handlers:
+    - name: Restart MySQL
+      service:
+        name: mysql
+        state: restarted
+
+    - name: Reload NGINX
+      service:
+        name: nginx
+        state: reloaded
+
+    - name: Reload PHP-FPM
+      service:
+        name: php8.1-fpm
+        state: reloaded
+
+    - name: Restart Varnish
+      service:
+        name: varnish
+        state: restarted
