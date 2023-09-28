@@ -1,6 +1,6 @@
 ---
 - name: Magento Deployment
-  hosts: my_host
+  hosts: all
   become: yes
   become_user: root
 
