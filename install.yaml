@@ -31,9 +31,13 @@
         state: present
         update_cache: yes
 
+    - name: Get Debian codename
+      command: lsb_release -cs
+      register: debian_codename
+
     - name: Add PHP repository
       apt_repository:
-        repo: "deb https://packages.sury.org/php/ $(lsb_release -sc) main"
+        repo: "deb https://packages.sury.org/php/ {{ debian_codename.stdout }} main"
         state: present
 
     - name: Add sury-keyring.gpg
