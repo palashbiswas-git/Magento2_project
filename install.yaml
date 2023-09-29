@@ -1,6 +1,6 @@
 ---
 - name: Install PHP 8.1, MySQL 8.0, NGINX, and Elasticsearch on Debian 11 and Debian 12
-  hosts: all
+  hosts: your_server
   become: yes
 
   tasks:
@@ -72,8 +72,8 @@
       expect:
         command: "dpkg-reconfigure -f noninteractive mysql-apt-config"
         responses:
-          "8.0"
-          "<OK>"
+          "8.0": ""
+          "<OK>": ""
         echo: yes
 
     - name: Add bullseye-security repository for Debian 12
