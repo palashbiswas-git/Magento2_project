@@ -1,6 +1,6 @@
 ---
 - name: Install PHP 8.1, MySQL 8.0, NGINX, and Elasticsearch on Debian 11 and Debian 12
-  hosts: your_server
+  hosts: all
   become: yes
 
   tasks:
@@ -72,8 +72,8 @@
       expect:
         command: "dpkg-reconfigure -f noninteractive mysql-apt-config"
         responses:
-          - "8.0"
-          - "<OK>"
+          "8.0"
+          "<OK>"
         echo: yes
 
     - name: Add bullseye-security repository for Debian 12
@@ -88,19 +88,6 @@
       apt:
         name: mysql-server
         state: present
-
-    - name: Provide MySQL root password
-      expect:
-        command: "mysql_secure_installation"
-        responses:
-          "Enter password for user root:": "your_mysql_root_password"
-          "New password:" "your_mysql_root_password"
-          "Re-enter new password:" "your_mysql_root_password"
-          "Do you wish to continue with the password provided?(Press y|Y for Yes, any other key for No) :": "Y"
-          "Remove anonymous users? (Press y|Y for Yes, any other key for No) :": "Y"
-          "Disallow root login remotely? (Press y|Y for Yes, any other key for No) :": "Y"
-          "Remove test database and access to it? (Press y|Y for Yes, any other key for No) :": "Y"
-          "Reload privilege tables now? (Press y|Y for Yes, any other key for No) :": "Y"
 
     - name: Install NGINX
       apt:
