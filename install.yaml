@@ -64,8 +64,8 @@
         dest: /tmp/mysql-apt-config_0.8.26-1_all.deb
 
     - name: Install MySQL APT configuration
-      dpkg:
-        src: /tmp/mysql-apt-config_0.8.26-1_all.deb
+      apt:
+        deb: /tmp/mysql-apt-config_0.8.26-1_all.deb
         state: present
 
     - name: Confirm MySQL APT repository configuration
