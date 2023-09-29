@@ -1,6 +1,6 @@
 ---
 - name: Install PHP 8.1, MySQL 8.0, NGINX, and Elasticsearch on Debian 11 and Debian 12
-  hosts: your_server
+  hosts: all
   become: yes
 
   tasks:
