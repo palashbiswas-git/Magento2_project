@@ -1,0 +1,154 @@
+---
+- name: Install PHP 8.1, MySQL 8.0, NGINX, and Elasticsearch on Debian 11 and Debian 12
+  hosts: your_server
+  become: yes
+
+  tasks:
+    - name: Update and upgrade packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Reboot if required
+      shell: '[ -e /var/run/reboot-required ] && sudo reboot'
+      async: 0
+      poll: 0
+      ignore_errors: yes
+
+    - name: Update apt repositories
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name: lsb-release, ca-certificates, apt-transport-https, software-properties-common, gnupg2, wget, ufw
+        state: present
+        update_cache: yes
+
+    - name: Install gnupg2 if not installed
+      apt:
+        name: gnupg2
+        state: present
+        update_cache: yes
+
+    - name: Add PHP repository
+      apt_repository:
+        repo: "deb https://packages.sury.org/php/ $(lsb_release -sc) main"
+        state: present
+
+    - name: Add sury-keyring.gpg
+      become: yes
+      become_user: root
+      get_url:
+        url: https://packages.sury.org/php/apt.gpg
+        dest: /etc/apt/trusted.gpg.d/sury-keyring.gpg
+        mode: '0644'
+
+    - name: Update apt repositories again
+      apt:
+        update_cache: yes
+
+    - name: Install PHP 8.1
+      apt:
+        name: php8.1
+        state: present
+
+    - name: Install PHP 8.1 extensions
+      apt:
+        name: php8.1-fpm, php8.1-xml, php8.1-mysql, php8.1-zip, php8.1-intl, php8.1-ldap, php8.1-gd, php8.1-cli, php8.1-bz2, php8.1-curl, php8.1-mbstring, php8.1-pgsql, php8.1-opcache, php8.1-soap, php8.1-cgi
+        state: present
+
+    - name: Download MySQL APT configuration
+      get_url:
+        url: https://repo.mysql.com//mysql-apt-config_0.8.26-1_all.deb
+        dest: /tmp/mysql-apt-config_0.8.26-1_all.deb
+
+    - name: Install MySQL APT configuration
+      dpkg:
+        src: /tmp/mysql-apt-config_0.8.26-1_all.deb
+        state: present
+
+    - name: Confirm MySQL APT repository configuration
+      expect:
+        command: "dpkg-reconfigure -f noninteractive mysql-apt-config"
+        responses:
+          - "8.0"
+          - "<OK>"
+        echo: yes
+
+    - name: Add bullseye-security repository for Debian 12
+      when: ansible_distribution_version == '12'
+      shell: "echo 'deb http://security.debian.org/debian-security bullseye-security main' | sudo tee /etc/apt/sources.list.d/bullseye-security.list"
+
+    - name: Update apt repositories again
+      apt:
+        update_cache: yes
+
+    - name: Install MySQL 8.0
+      apt:
+        name: mysql-server
+        state: present
+
+    - name: Provide MySQL root password
+      expect:
+        command: "mysql_secure_installation"
+        responses:
+          "Enter password for user root:": "your_mysql_root_password"
+          "New password:" "your_mysql_root_password"
+          "Re-enter new password:" "your_mysql_root_password"
+          "Do you wish to continue with the password provided?(Press y|Y for Yes, any other key for No) :": "Y"
+          "Remove anonymous users? (Press y|Y for Yes, any other key for No) :": "Y"
+          "Disallow root login remotely? (Press y|Y for Yes, any other key for No) :": "Y"
+          "Remove test database and access to it? (Press y|Y for Yes, any other key for No) :": "Y"
+          "Reload privilege tables now? (Press y|Y for Yes, any other key for No) :": "Y"
+
+    - name: Install NGINX
+      apt:
+        name: nginx
+        state: present
+
+    - name: Enable UFW and allow SSH
+      command: ufw allow OpenSSH
+      ignore_errors: yes
+      async: 0
+      poll: 0
+
+    - name: Enable UFW and allow HTTP and HTTPS
+      command: ufw allow 'Nginx Full'
+      ignore_errors: yes
+      async: 0
+      poll: 0
+
+    - name: Start UFW
+      command: ufw --force enable
+      ignore_errors: yes
+      async: 0
+      poll: 0
+
+    - name: Install Elasticsearch GPG key
+      shell: "wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg"
+      ignore_errors: yes
+
+    - name: Install apt-transport-https for Elasticsearch
+      apt:
+        name: apt-transport-https
+        state: present
+
+    - name: Add Elasticsearch APT repository
+      shell: "echo 'deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main' | sudo tee /etc/apt/sources.list.d/elastic-8.x.list"
+      ignore_errors: yes
+
+    - name: Update apt repositories for Elasticsearch
+      apt:
+        update_cache: yes
+
+    - name: Install Elasticsearch
+      apt:
+        name: elasticsearch
+        state: present
+
+    - name: Enable and start Elasticsearch service
+      systemd:
+        name: elasticsearch.service
+        enabled: yes
+        state: started
