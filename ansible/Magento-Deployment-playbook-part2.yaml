@@ -47,18 +47,6 @@
       when: not magento_installed.stat.exists
       register: composer_result
       ignore_errors: yes
-    
-    - name: Debug Composer installation failure
-      debug:
-        var: composer_result
-      when: composer_result.failed
-      when: not magento_installed.stat.exists
-    
-    - name: Handle Composer installation failure
-      fail:
-        msg: "Composer installation failed with error: {{ composer_result.stderr }}"
-      when: composer_result.rc != 0
-      when: not magento_installed.stat.exists
 
     - name: Install Magento 2 with Sample Data and Elasticsearch
       shell: |
