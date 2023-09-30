@@ -39,6 +39,13 @@
         recurse: yes
       when: not magento_installed.stat.exists
 
+    - name: Install Composer
+      shell: |
+        curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+      args:
+        creates: /usr/local/bin/composer
+      when: not magento_installed.stat.exists
+
     - name: Install Magento 2 with Sample Data and Elasticsearch
       shell: |
         sudo -u test-ssh composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition /var/www/html/magento2
