@@ -13,8 +13,18 @@
     - name: Create 'test-ssh' user
       user:
         name: test-ssh
-        groups: clp
         shell: /bin/bash
+
+    - name: Create 'clp' group
+      group:
+        name: clp
+
+    - name: Add 'test-ssh' to the 'clp' group
+      user:
+        name: test-ssh
+        groups: clp
+        append: yes
+      when: magento_installed.stdout != "present"
 
     - name: Change ownership of all files to 'test-ssh' and 'clp'
       file:
