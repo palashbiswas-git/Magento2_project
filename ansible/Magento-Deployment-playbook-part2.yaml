@@ -53,7 +53,7 @@
         COMPOSER_HOME: /home/test-ssh/.composer
       args:
         creates: /var/www/html/magento2/app/etc/env.php
-      when: magento_installed.stdout != "present"
+      when: not magento_installed.stat.exists
 
     - name: Configure PHP 8.1
       template:
