@@ -5,6 +5,11 @@
   become_user: root
 
   tasks:
+    - name: Check if Magento 2 is installed
+      stat:
+        path: /var/www/html/magento2/app/etc/env.php
+      register: magento_installed
+
     - name: Install Redis Server
       apt:
         name: redis-server
@@ -24,7 +29,7 @@
         name: test-ssh
         groups: clp
         append: yes
-      when: magento_installed.stdout != "present"
+      when: magento_installed.stat.exists == false
 
     - name: Change ownership of all files to 'test-ssh' and 'clp'
       file:
@@ -33,11 +38,6 @@
         group: clp
         recurse: yes
       when: magento_installed.stdout != "present"
-
-    - name: Check if Magento 2 is installed
-      stat:
-        path: /var/www/html/magento2/app/etc/env.php
-      register: magento_installed
 
     - name: Install Magento 2 with Sample Data and Elasticsearch
       shell: |
