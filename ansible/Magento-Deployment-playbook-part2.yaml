@@ -1,0 +1,110 @@
+---
+- name: Complete Magento Deployment
+  hosts: all
+  become: yes
+  become_user: root
+
+  tasks:
+    - name: Install Redis Server
+      apt:
+        name: redis-server
+        state: present
+
+    - name: Configure Magento to use Redis for cache and sessions
+      command: php /var/www/html/magento2/bin/magento setup:config:set --cache-backend=redis --cache-backend-redis-server=127.0.0.1 --cache-backend-redis-db=0
+      environment:
+        HOME: /home/test-ssh
+        USER: test-ssh
+      args:
+        creates: /var/www/html/magento2/app/etc/env.php
+
+    - name: Configure PHP 8.1
+      template:
+        src: php.ini.j2
+        dest: /etc/php/8.1/fpm/php.ini
+
+    - name: Configure MySQL
+      template:
+        src: my.cnf.j2
+        dest: /etc/mysql/my.cnf
+      notify: Restart MySQL
+
+    - name: Configure NGINX
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/magento
+      notify: Reload NGINX
+
+    - name: Create 'test-ssh' user
+      user:
+        name: test-ssh
+        groups: clp
+        shell: /bin/bash
+
+    - name: Change ownership of all files to 'test-ssh' and 'clp'
+      file:
+        path: /var/www/html/magento2
+        owner: test-ssh
+        group: clp
+        recurse: yes
+
+    - name: Install Magento 2 with Sample Data and Elasticsearch
+      shell: |
+        sudo -u test-ssh composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition /var/www/html/magento2
+        cd /var/www/html/magento2
+        sudo -u test-ssh bin/magento setup:install --base-url=http://test.mgt.com/ --db-host=localhost --db-name=magento2 --db-user=magento_user --db-password=magento_user123 --admin-firstname=Admin --admin-lastname=User --admin-email=admin@example.com --admin-user=admin --admin-password=admin123 --language=en_US --currency=USD --timezone=UTC --use-rewrites=1 --search-engine=elasticsearch7 --elasticsearch-host=localhost --elasticsearch-port=9200
+        sudo -u test-ssh bin/magento sampledata:deploy
+        sudo -u test-ssh bin/magento setup:upgrade
+        sudo -u test-ssh bin/magento setup:di:compile
+        sudo -u test-ssh bin/magento setup:static-content:deploy -f
+        sudo -u test-ssh bin/magento cache:flush
+      environment:
+        COMPOSER_HOME: /home/test-ssh/.composer
+      args:
+        creates: /var/www/html/magento2/app/etc/env.php
+
+    - name: Create PHP-FPM pool for 'test-ssh' and 'clp'
+      template:
+        src: php-fpm-pool.conf.j2
+        dest: /etc/php/8.1/fpm/pool.d/magento.conf
+      notify: Reload PHP-FPM
+
+    - name: Configure PHPMyAdmin
+      template:
+        src: phpmyadmin.conf.j2
+        dest: /etc/nginx/conf.d/phpmyadmin.conf
+      notify: Reload NGINX
+
+    - name: Generate self-signed SSL certificate
+      shell: openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/server.key -out /etc/nginx/ssl/server.crt
+      args:
+        creates: /etc/nginx/ssl/server.crt
+
+    - name: Configure NGINX to Redirect HTTP to HTTPS
+      template:
+        src: nginx-http-to-https.conf.j2
+        dest: /etc/nginx/conf.d/redirect-http-to-https.conf
+      notify: Reload NGINX
+
+    - name: Set all store URLs to HTTPS in Magento
+      shell: |
+        sudo -u test-ssh bin/magento setup:store-config:set --base-url=https://test.mgt.com/
+        sudo -u test-ssh bin/magento setup:store-config:set --base-url-secure=https://test.mgt.com/
+      args:
+        creates: /var/www/html/magento2/app/etc/env.php
+
+  handlers:
+    - name: Restart MySQL
+      service:
+        name: mysql
+        state: restarted
+
+    - name: Reload NGINX
+      service:
+        name: nginx
+        state: reloaded
+
+    - name: Reload PHP-FPM
+      service:
+        name: php8.1-fpm
+        state: reloaded
