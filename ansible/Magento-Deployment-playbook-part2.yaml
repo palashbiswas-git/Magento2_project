@@ -10,13 +10,40 @@
         name: redis-server
         state: present
 
-    - name: Configure Magento to use Redis for cache and sessions
-      command: php /var/www/html/magento2/bin/magento setup:config:set --cache-backend=redis --cache-backend-redis-server=127.0.0.1 --cache-backend-redis-db=0
+    - name: Create 'test-ssh' user
+      user:
+        name: test-ssh
+        groups: clp
+        shell: /bin/bash
+
+    - name: Change ownership of all files to 'test-ssh' and 'clp'
+      file:
+        path: /var/www/html/magento2
+        owner: test-ssh
+        group: clp
+        recurse: yes
+      when: magento_installed.stdout != "present"
+
+    - name: Check if Magento 2 is installed
+      stat:
+        path: /var/www/html/magento2/app/etc/env.php
+      register: magento_installed
+
+    - name: Install Magento 2 with Sample Data and Elasticsearch
+      shell: |
+        sudo -u test-ssh composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition /var/www/html/magento2
+        cd /var/www/html/magento2
+        sudo -u test-ssh bin/magento setup:install --base-url=http://test.mgt.com/ --db-host=localhost --db-name=magento2 --db-user=magento_user --db-password=magento_user123 --admin-firstname=Admin --admin-lastname=User --admin-email=admin@example.com --admin-user=admin --admin-password=admin123 --language=en_US --currency=USD --timezone=UTC --use-rewrites=1 --search-engine=elasticsearch7 --elasticsearch-host=localhost --elasticsearch-port=9200
+        sudo -u test-ssh bin/magento sampledata:deploy
+        sudo -u test-ssh bin/magento setup:upgrade
+        sudo -u test-ssh bin/magento setup:di:compile
+        sudo -u test-ssh bin/magento setup:static-content:deploy -f
+        sudo -u test-ssh bin/magento cache:flush
       environment:
-        HOME: /home/test-ssh
-        USER: test-ssh
+        COMPOSER_HOME: /home/test-ssh/.composer
       args:
         creates: /var/www/html/magento2/app/etc/env.php
+      when: magento_installed.stdout != "present"
 
     - name: Configure PHP 8.1
       template:
@@ -35,31 +62,11 @@
         dest: /etc/nginx/sites-available/magento
       notify: Reload NGINX
 
-    - name: Create 'test-ssh' user
-      user:
-        name: test-ssh
-        groups: clp
-        shell: /bin/bash
-
-    - name: Change ownership of all files to 'test-ssh' and 'clp'
-      file:
-        path: /var/www/html/magento2
-        owner: test-ssh
-        group: clp
-        recurse: yes
-
-    - name: Install Magento 2 with Sample Data and Elasticsearch
-      shell: |
-        sudo -u test-ssh composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition /var/www/html/magento2
-        cd /var/www/html/magento2
-        sudo -u test-ssh bin/magento setup:install --base-url=http://test.mgt.com/ --db-host=localhost --db-name=magento2 --db-user=magento_user --db-password=magento_user123 --admin-firstname=Admin --admin-lastname=User --admin-email=admin@example.com --admin-user=admin --admin-password=admin123 --language=en_US --currency=USD --timezone=UTC --use-rewrites=1 --search-engine=elasticsearch7 --elasticsearch-host=localhost --elasticsearch-port=9200
-        sudo -u test-ssh bin/magento sampledata:deploy
-        sudo -u test-ssh bin/magento setup:upgrade
-        sudo -u test-ssh bin/magento setup:di:compile
-        sudo -u test-ssh bin/magento setup:static-content:deploy -f
-        sudo -u test-ssh bin/magento cache:flush
+    - name: Configure Magento to use Redis for cache and sessions
+      command: php /var/www/html/magento2/bin/magento setup:config:set --cache-backend=redis --cache-backend-redis-server=127.0.0.1 --cache-backend-redis-db=0
       environment:
-        COMPOSER_HOME: /home/test-ssh/.composer
+        HOME: /home/test-ssh
+        USER: test-ssh
       args:
         creates: /var/www/html/magento2/app/etc/env.php
 
