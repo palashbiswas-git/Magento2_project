@@ -29,8 +29,20 @@
         dest: /etc/mysql/my.cnf
       notify: Restart MySQL
 
-    - name: Install Composer
-      shell: curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+- name: Install Composer
+  shell: |
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  args:
+    creates: /usr/local/bin/composer
+  when: not magento_installed.stat.exists
+  register: composer_result
+  ignore_errors: yes
+
+- name: Handle Composer installation failure
+  fail:
+    msg: "Composer installation failed with error: {{ composer_result.stderr }}"
+  when: composer_result.rc != 0
+  when: not magento_installed.stat.exists
 
     - name: Create 'test-ssh' user
       user:
