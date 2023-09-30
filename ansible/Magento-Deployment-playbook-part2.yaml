@@ -50,7 +50,7 @@
 
     - name: Install Magento 2 with Sample Data and Elasticsearch
       shell: |
-        sudo -u test-ssh composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition /var/www/html/magento2 --username=palash251g5dad --password=b93e8293a189a2c581cdabb96019734d
+        sudo -u test-ssh composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition /var/www/html/magento2
         cd /var/www/html/magento2
         sudo -u test-ssh bin/magento setup:install --base-url=http://test.mgt.com/ --db-host=localhost --db-name=magento2 --db-user=magento_user --db-password=magento_user123 --admin-firstname=Admin --admin-lastname=User --admin-email=admin@example.com --admin-user=admin --admin-password=admin123 --language=en_US --currency=USD --timezone=UTC --use-rewrites=1 --search-engine=elasticsearch7 --elasticsearch-host=localhost --elasticsearch-port=9200
         sudo -u test-ssh bin/magento sampledata:deploy
