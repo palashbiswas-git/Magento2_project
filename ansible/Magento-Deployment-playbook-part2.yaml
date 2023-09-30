@@ -37,7 +37,7 @@
         owner: test-ssh
         group: clp
         recurse: yes
-      when: magento_installed.stdout != "present"
+      when: magento_installed.stdout == false
 
     - name: Install Magento 2 with Sample Data and Elasticsearch
       shell: |
