@@ -20,18 +20,18 @@
 
     - name: Configure PHP 8.1
       template:
-        src: php.ini.j2
+        src: ansible/Jinja2-templates/php.ini.j2
         dest: /etc/php/8.1/fpm/php.ini
 
     - name: Configure MySQL
       template:
-        src: my.cnf.j2
+        src: ansible/Jinja2-templates/my.cnf.j2
         dest: /etc/mysql/my.cnf
       notify: Restart MySQL
 
     - name: Configure NGINX
       template:
-        src: nginx.conf.j2
+        src: ansible/Jinja2-templates/nginx.conf.j2
         dest: /etc/nginx/sites-available/magento
       notify: Reload NGINX
 
@@ -65,13 +65,13 @@
 
     - name: Create PHP-FPM pool for 'test-ssh' and 'clp'
       template:
-        src: php-fpm-pool.conf.j2
+        src: ansible/Jinja2-templates/php-fpm-pool.conf.j2
         dest: /etc/php/8.1/fpm/pool.d/magento.conf
       notify: Reload PHP-FPM
 
     - name: Configure PHPMyAdmin
       template:
-        src: phpmyadmin.conf.j2
+        src: ansible/Jinja2-templates/phpmyadmin.conf.j2
         dest: /etc/nginx/conf.d/phpmyadmin.conf
       notify: Reload NGINX
 
@@ -82,7 +82,7 @@
 
     - name: Configure NGINX to Redirect HTTP to HTTPS
       template:
-        src: nginx-http-to-https.conf.j2
+        src: ansible/Jinja2-templates/nginx-http-to-https.conf.j2
         dest: /etc/nginx/conf.d/redirect-http-to-https.conf
       notify: Reload NGINX
 
