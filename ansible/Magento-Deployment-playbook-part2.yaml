@@ -29,7 +29,7 @@
         name: test-ssh
         groups: clp
         append: yes
-      when: magento_installed.stat.exists == false
+      when: not magento_installed.stat.exists
 
     - name: Change ownership of all files to 'test-ssh' and 'clp'
       file:
@@ -37,7 +37,7 @@
         owner: test-ssh
         group: clp
         recurse: yes
-      when: magento_installed.stdout == false
+      when: not magento_installed.stat.exists
 
     - name: Install Magento 2 with Sample Data and Elasticsearch
       shell: |
